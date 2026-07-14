@@ -62,8 +62,9 @@ public static class GameConfig
     // İlk 2 karakter bedava (0); asiller (Kraliçe/Kral) en pahalı; kalanlar artan bedelli.
     // Dizi FigureCount (10) ile aynı uzunlukta olmalı; sıra fig_01..fig_10 ile eşleşir.
     public const int CoinsPerPoint = 1;                       // 1 skor puanı = 1 coin
+    // Asiller (Kraliçe/Kral) ultra-prestij: bedelleri 10 kat - uzun vadeli "büyük hedef".
     //                                          f01 f02  f03(Kraliçe) f04(Kral) f05 f06  f07  f08  f09  f10
-    public static readonly int[] UnlockCosts = { 0,  0,   800,        950,      90, 160, 250, 360, 500, 680 };
+    public static readonly int[] UnlockCosts = { 0,  0,   8000,       9500,     90, 160, 250, 360, 500, 680 };
 
     // --- Tahta (backboard) çarpışması - GERÇEK banka atış için ---
     // KRİTİK GEOMETRİ: Bu ÖNDEN görünüm; çember, tahtanın tam altında. Tahtayı çemberin ÜSTÜNE
@@ -73,10 +74,11 @@ public static class GameConfig
     // sağa kaçan/sert atışlar tahtaya çarpıp sola-aşağı seker = gerçek banka atış.
     public const float BoardX = 0.92f;                        // duvarın çember merkezine göre yatay konumu (sağ/arka)
     public const float BoardThickness = 0.16f;               // dikey duvar kalınlığı
-    public const float BoardTop = 0.50f;                     // duvarın üst ucu - SADECE çemberin hemen üstü (1.70 iken
+    public const float BoardTop = 0.30f;                     // duvarın üst ucu - SADECE çemberin hemen üstü (1.70 iken
                                                              // top panyanın ortasında "görünmez duvara" çarpıyordu; önden
                                                              // görünümde yalnız çember dibindeki sekme doğal görünür)
-    public const float BoardBottom = -0.25f;                 // duvarın alt ucu (çember hizasının biraz üstü)
+    public const float BoardBottom = -0.32f;                 // duvarın alt ucu: çember kutusuyla BİRLEŞİK (aralarında
+                                                             // top sıkışabilecek/sekip kalabilecek cep boşluğu kalmasın)
     public const float BoardBounce = 0.05f;                  // tahta ÖLÜ olmalı: 0.42 topu sola fırlatıp atışı bozuyordu;
                                                              // ölü tahtada top yüzeyden aşağı kayıp FİLEYE düşer = gerçek banka atış
 

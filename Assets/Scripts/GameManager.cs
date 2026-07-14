@@ -43,11 +43,15 @@ public class GameManager : MonoBehaviour
     public int DayStreak { get; private set; }
     /// <summary>Bu oyunda kazanılan coin (oyun sonu ekranı gösterir).</summary>
     public int LastCoinsEarned { get; private set; }
+    /// <summary>Bu oyundaki basket sayısı (ZEHİR topunun +1 coin/basket özelliği için).</summary>
+    public int BasketsThisGame { get; private set; }
+    bool comboShieldUsed; // GECE topunun kalkanı bu oyunda kullanıldı mı
 
     // Olaylar (UI ve efektler bunları dinler)
     public event Action OnChanged;             // skor/hak/kombo değişti -> HUD yenile
     public event Action<int, Vector3, bool> OnScored; // (puan, dünya konumu, temiz/swish mi) -> efektler
     public event Action OnStateChanged;        // durum değişti -> panelleri değiştir
+    public event Action OnComboShielded;       // GECE kalkanı bir ıskayı affetti -> bildirim göster
 
     void Awake()
     {
@@ -89,9 +93,13 @@ public class GameManager : MonoBehaviour
     {
         Score = 0; Combo = 0; ShotsTaken = 0;
         NewRecord = false;
+        BasketsThisGame = 0;
+        comboShieldUsed = false;
         CurrentMode = NextMode;
         TimeLeft = GameConfig.TimedDuration;
-        BallsTotal = GameConfig.StartingBalls;
+        // GALAKSİ topu özelliği: klasik modda +1 ekstra top.
+        BallsTotal = GameConfig.StartingBalls
+            + (BallSkins.CurrentPerk == BallSkins.Perk.ExtraBall ? 1 : 0);
 
         // Günlük seri: günün İLK oyununda güncellenir (dün oynadıysa +1, yoksa 1'den başlar).
         int today = TodayStamp(0);
@@ -128,6 +136,8 @@ public class GameManager : MonoBehaviour
         if (clean) CareerSwish++;
         if (Combo > BestCombo) BestCombo = Combo;
         if (CurrentMode == Mode.Timed) TimeLeft += GameConfig.TimedScoreBonus; // sayı = ek süre
+        BasketsThisGame++;
+        Missions.NotifyBasket(pts, clean, Combo, Score); // günlük görev ilerlemesi
         OnScored?.Invoke(pts, worldPos, clean);
         OnChanged?.Invoke();
     }
@@ -135,6 +145,14 @@ public class GameManager : MonoBehaviour
     /// <summary>Atış ıskalandığında.</summary>
     public void Miss()
     {
+        // GECE topu özelliği: oyun başına 1 ıska komboyu bozmaz (kalkan).
+        if (Combo > 0 && !comboShieldUsed && BallSkins.CurrentPerk == BallSkins.Perk.ComboShield)
+        {
+            comboShieldUsed = true;
+            OnComboShielded?.Invoke();
+            OnChanged?.Invoke();
+            return;
+        }
         Combo = 0;
         OnChanged?.Invoke();
     }
@@ -159,8 +177,11 @@ public class GameManager : MonoBehaviour
             if (Score > highClassic) { highClassic = Score; PlayerPrefs.SetInt("bobble_high", highClassic); }
         }
         // Coin ödülü: bu oyunun skoru kadar (kilit açmada harcanır).
-        LastCoinsEarned = Score * GameConfig.CoinsPerPoint;
+        // ZEHİR topu özelliği: her basket +1 coin ekler.
+        LastCoinsEarned = Score * GameConfig.CoinsPerPoint
+            + (BallSkins.CurrentPerk == BallSkins.Perk.CoinPerBasket ? BasketsThisGame : 0);
         Progress.AddCoins(LastCoinsEarned);
+        Missions.NotifyGameEnd(); // "N oyun bitir" görevleri
 
         // Kariyer istatistiklerini kalıcılaştır (oyun başına bir kez, toplu yaz).
         CareerGames++;

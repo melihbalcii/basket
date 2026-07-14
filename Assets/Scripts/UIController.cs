@@ -51,6 +51,17 @@ public class UIController : MonoBehaviour
     InputField namePromptInput;
     Text namePromptHint;
 
+    // Günlük görevler
+    GameObject missionsPanel;
+    Transform missionsList;
+    Text missionsBonusText, missionToast;
+    Coroutine toastRoutine;
+
+    // Top görünümü mağazası
+    GameObject ballShopPanel;
+    Transform ballShopGrid;
+    Text ballShopCoinText;
+
     public void Init(GameBootstrap b)
     {
         boot = b;
@@ -73,6 +84,8 @@ public class UIController : MonoBehaviour
         BuildTraitsPanel(canvas.transform);
         BuildUnlockPanel(canvas.transform);
         BuildLeaderboardPanel(canvas.transform);
+        BuildMissionsPanel(canvas.transform);
+        BuildBallShopPanel(canvas.transform);
 
         // Efekt katmanı: son çocuk = her şeyin ÜSTÜNDE (rekor konfetisi burada yağar).
         var fx = new GameObject("FxLayer", typeof(RectTransform));
@@ -81,11 +94,19 @@ public class UIController : MonoBehaviour
         fxLayer.anchorMin = Vector2.zero; fxLayer.anchorMax = Vector2.one;
         fxLayer.offsetMin = Vector2.zero; fxLayer.offsetMax = Vector2.zero;
 
+        // Günlük görev kutlaması: fx katmanında (her şeyin üstünde) kısa "GÖREV TAMAM" bildirimi.
+        missionToast = MakeText(fxLayer, "", 40, TextAnchor.MiddleCenter, new Color(0.5f, 0.95f, 0.7f),
+            new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -240), new Vector2(1300, 60));
+        missionToast.font = fontBold;
+        Missions.OnCompleted += (i, def, reward) => ShowMissionToast("GÖREV TAMAM: " + def.Text + "  +" + reward + " COİN");
+        Missions.OnAllDone += bonus => ShowMissionToast("TÜM GÖREVLER BİTTİ! BONUS +" + bonus + " COİN");
+
         // Zorunlu isim kapısı: her şeyin ÜSTÜNDE (en son çocuk) - isim girilmeden geçilmez.
         BuildNamePrompt(canvas.transform);
 
         GameManager.Instance.OnChanged += Refresh;
         GameManager.Instance.OnStateChanged += OnStateChanged;
+        GameManager.Instance.OnComboShielded += () => ShowMissionToast("GECE TOPU komboyu korudu! 🛡");
         OnStateChanged();
         Refresh();
         MaybeShowNamePrompt(); // isim yoksa açılışta zorunlu kapıyı göster
@@ -317,7 +338,8 @@ public class UIController : MonoBehaviour
             bool first = true;
             for (int f = 0; f < PlayerData.FigureCount; f++)
             {
-                if (PlayerData.TraitOf(f) != t) continue;
+                // Asiller TÜM yeteneklere sahip: her özelliğin listesinde görünürler.
+                if (PlayerData.TraitOf(f) != t && !PlayerData.IsRoyal(f)) continue;
                 if (!first) sb.Append(", ");
                 sb.Append(PlayerData.NameOf(f));
                 first = false;
@@ -428,9 +450,19 @@ public class UIController : MonoBehaviour
             new Vector2(1, 1), new Vector2(1, 1), new Vector2(1, 1), new Vector2(-40, -124), new Vector2(470, 72),
             () => OpenLeaderboard(lbMode));
 
+        // Top mağazası düğmesi (sıralamanın altında): coin harcama hedefi.
+        MakeButton(selectPanel.transform, "TOPLAR", new Color(0.45f, 0.28f, 0.55f),
+            new Vector2(1, 1), new Vector2(1, 1), new Vector2(1, 1), new Vector2(-40, -212), new Vector2(470, 72),
+            OpenBallShop);
+
         // Oyuncu adı (sol üst, serinin altında): skor tablosunda bu isimle görünürsün.
         nameField = MakeInputField(selectPanel.transform, "ADINI GİR (sıralama için)",
             new Vector2(0, 1), new Vector2(40, -150), new Vector2(430, 64));
+
+        // Günlük görevler düğmesi (sol üst, isim alanının altında): her gün 3 görev = coin.
+        MakeButton(selectPanel.transform, "GÖREVLER", new Color(0.55f, 0.35f, 0.12f),
+            new Vector2(0, 1), new Vector2(0, 1), new Vector2(0, 1), new Vector2(40, -232), new Vector2(300, 70),
+            OpenMissions);
 
         // Özellik rehberi düğmesi (sağ alt): rozetlerin ne anlama geldiğini açıklar.
         MakeButton(selectPanel.transform, "ÖZELLİKLER", new Color(0.25f, 0.30f, 0.45f),
@@ -655,7 +687,9 @@ public class UIController : MonoBehaviour
         pendingUnlock = figIndex;
         unlockFigImg.sprite = Resources.Load<Sprite>($"Figures/fig_{(figIndex + 1):00}");
         unlockFigImg.color = Color.white;
-        unlockNameText.text = PlayerData.NameOf(figIndex) + "  •  " + PlayerData.TraitName(PlayerData.TraitOf(figIndex));
+        unlockNameText.text = PlayerData.NameOf(figIndex) + "  •  " + (PlayerData.IsRoyal(figIndex)
+            ? "TÜM YETENEKLER (NİŞANCI + GÜÇLÜ KOL + ŞANSLI)"
+            : PlayerData.TraitName(PlayerData.TraitOf(figIndex)));
         int cost = Progress.CostOf(figIndex);
         unlockCostText.text = "FİYAT: " + cost + " COIN";
         bool can = Progress.Coins >= cost;
@@ -922,6 +956,218 @@ public class UIController : MonoBehaviour
         return input;
     }
 
+    // ---------------- Günlük görevler ----------------
+    void BuildMissionsPanel(Transform parent)
+    {
+        missionsPanel = NewPanel(parent, "MissionsPanel", new Color(0.03f, 0.05f, 0.11f, 0.96f));
+
+        var t = MakeText(missionsPanel.transform, "GÜNLÜK GÖREVLER", 62, TextAnchor.UpperCenter, Color.white,
+            new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -70), new Vector2(1200, 84));
+        t.font = fontBold;
+        MakeText(missionsPanel.transform, "Her gün yenilenir • Ödüller anında coin olarak eklenir", 28,
+            TextAnchor.UpperCenter, new Color(1f, 0.85f, 0.5f),
+            new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -148), new Vector2(1200, 40));
+
+        var list = new GameObject("MisList", typeof(RectTransform));
+        list.transform.SetParent(missionsPanel.transform, false);
+        var lrt = (RectTransform)list.transform;
+        lrt.anchorMin = lrt.anchorMax = new Vector2(0.5f, 1); lrt.pivot = new Vector2(0.5f, 1);
+        lrt.anchoredPosition = new Vector2(0, -210); lrt.sizeDelta = new Vector2(1060, 420);
+        missionsList = list.transform;
+
+        missionsBonusText = MakeText(missionsPanel.transform, "", 32, TextAnchor.MiddleCenter, new Color(1f, 0.82f, 0.3f),
+            new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -560), new Vector2(1000, 50));
+        missionsBonusText.font = fontBold;
+
+        MakeButton(missionsPanel.transform, "KAPAT", new Color(0.9f, 0.45f, 0.15f),
+            new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 48), new Vector2(320, 88),
+            () => missionsPanel.SetActive(false));
+
+        missionsPanel.SetActive(false);
+    }
+
+    void OpenMissions()
+    {
+        missionsPanel.SetActive(true);
+        RefreshMissions();
+    }
+
+    void RefreshMissions()
+    {
+        if (missionsList == null) return;
+        for (int i = missionsList.childCount - 1; i >= 0; i--)
+            Destroy(missionsList.GetChild(i).gameObject);
+
+        const float rowH = 110f, gap = 18f;
+        for (int i = 0; i < 3; i++)
+        {
+            var def = Missions.Get(i);
+            bool dn = Missions.IsDone(i);
+            var row = new GameObject("Mis" + i, typeof(RectTransform));
+            row.transform.SetParent(missionsList, false);
+            var bg = row.AddComponent<Image>();
+            bg.sprite = PillSprite(); bg.type = Image.Type.Sliced;
+            bg.color = dn ? new Color(0.16f, 0.42f, 0.28f, 0.95f) : new Color(0.12f, 0.15f, 0.24f, 0.9f);
+            var rrt = bg.rectTransform;
+            rrt.anchorMin = rrt.anchorMax = new Vector2(0.5f, 1); rrt.pivot = new Vector2(0.5f, 1);
+            rrt.sizeDelta = new Vector2(1060, rowH);
+            rrt.anchoredPosition = new Vector2(0, -i * (rowH + gap));
+
+            var desc = MakeText(row.transform, def.Text, 32, TextAnchor.MiddleLeft, Color.white,
+                new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(34, 16), new Vector2(760, 44));
+            desc.font = fontBold;
+            // İlerleme çubuğu yerine net sayı: "12/20" (bitti ise ✓ TAMAMLANDI).
+            MakeText(row.transform, dn ? "TAMAMLANDI" : (Missions.ProgressOf(i) + " / " + def.target), 26,
+                TextAnchor.MiddleLeft, dn ? new Color(0.6f, 1f, 0.75f) : new Color(1f, 1f, 1f, 0.65f),
+                new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(34, -22), new Vector2(500, 36));
+
+            var rw = MakeText(row.transform, "+" + def.reward, 40, TextAnchor.MiddleRight,
+                dn ? new Color(0.6f, 1f, 0.75f) : new Color(1f, 0.82f, 0.3f),
+                new Vector2(1, 0.5f), new Vector2(1, 0.5f), new Vector2(1, 0.5f), new Vector2(-36, 0), new Vector2(220, 54));
+            rw.font = fontBold;
+        }
+
+        missionsBonusText.text = Missions.AllDone
+            ? "3/3 TAMAM! Bonus +" + Missions.AllDoneBonus + " coin verildi ✓"
+            : "3 görevi de bitir → ekstra +" + Missions.AllDoneBonus + " coin";
+    }
+
+    void ShowMissionToast(string msg)
+    {
+        if (missionToast == null) return;
+        if (toastRoutine != null) StopCoroutine(toastRoutine);
+        toastRoutine = StartCoroutine(ToastCo(msg));
+        // Panel açıksa satırları da tazele (TAMAMLANDI'ya dönsün).
+        if (missionsPanel != null && missionsPanel.activeSelf) RefreshMissions();
+    }
+
+    System.Collections.IEnumerator ToastCo(string msg)
+    {
+        missionToast.text = msg;
+        var c = missionToast.color; c.a = 1f; missionToast.color = c;
+        Sfx.Play(Sfx.Id.Score);
+        yield return new WaitForSeconds(2.6f);
+        for (float f = 1f; f > 0f; f -= Time.deltaTime * 2.5f)
+        {
+            c.a = f; missionToast.color = c;
+            yield return null;
+        }
+        missionToast.text = "";
+    }
+
+    // ---------------- Top mağazası ----------------
+    void BuildBallShopPanel(Transform parent)
+    {
+        ballShopPanel = NewPanel(parent, "BallShopPanel", new Color(0.03f, 0.05f, 0.11f, 0.96f));
+
+        var t = MakeText(ballShopPanel.transform, "TOP KOLEKSİYONU", 62, TextAnchor.UpperCenter, Color.white,
+            new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -70), new Vector2(1200, 84));
+        t.font = fontBold;
+        ballShopCoinText = MakeText(ballShopPanel.transform, "", 40, TextAnchor.UpperCenter, new Color(1f, 0.82f, 0.2f),
+            new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -150), new Vector2(800, 54));
+        ballShopCoinText.font = fontBold;
+
+        var grid = new GameObject("BallGrid", typeof(RectTransform));
+        grid.transform.SetParent(ballShopPanel.transform, false);
+        var grt = (RectTransform)grid.transform;
+        grt.anchorMin = grt.anchorMax = new Vector2(0.5f, 0.5f); grt.pivot = new Vector2(0.5f, 0.5f);
+        grt.anchoredPosition = new Vector2(0, -20); grt.sizeDelta = new Vector2(1100, 560);
+        ballShopGrid = grid.transform;
+
+        MakeButton(ballShopPanel.transform, "KAPAT", new Color(0.9f, 0.45f, 0.15f),
+            new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 48), new Vector2(320, 88),
+            () => ballShopPanel.SetActive(false));
+
+        ballShopPanel.SetActive(false);
+    }
+
+    void OpenBallShop()
+    {
+        ballShopPanel.SetActive(true);
+        RefreshBallShop();
+    }
+
+    void RefreshBallShop()
+    {
+        if (ballShopGrid == null) return;
+        for (int i = ballShopGrid.childCount - 1; i >= 0; i--)
+            Destroy(ballShopGrid.GetChild(i).gameObject);
+        ballShopCoinText.text = "Bakiye: " + Progress.Coins + " coin";
+
+        const float cw = 250f, ch = 300f, gap = 16f;
+        int cols = 4;
+        for (int i = 0; i < BallSkins.All.Length; i++)
+        {
+            var skin = BallSkins.All[i];
+            bool unlocked = BallSkins.IsUnlocked(skin);
+            bool selected = BallSkins.SelectedId == skin.id;
+
+            int r = i / cols, c = i % cols;
+            int rowCount = Mathf.Min(cols, BallSkins.All.Length - r * cols);
+            float x = (c - (rowCount - 1) * 0.5f) * (cw + gap);
+            float y = 150f - r * (ch + gap);
+
+            var card = new GameObject("Skin_" + skin.id, typeof(RectTransform));
+            card.transform.SetParent(ballShopGrid, false);
+            var bg = card.AddComponent<Image>();
+            bg.sprite = PillSprite(); bg.type = Image.Type.Sliced;
+            bg.color = selected ? new Color(0.20f, 0.48f, 0.32f, 0.95f)
+                     : unlocked ? new Color(0.14f, 0.18f, 0.30f, 0.92f)
+                                : new Color(0.10f, 0.12f, 0.20f, 0.92f);
+            var crt = bg.rectTransform;
+            crt.anchorMin = crt.anchorMax = new Vector2(0.5f, 0.5f); crt.pivot = new Vector2(0.5f, 0.5f);
+            crt.sizeDelta = new Vector2(cw, ch); crt.anchoredPosition = new Vector2(x, y);
+
+            var btn = card.AddComponent<Button>();
+            btn.targetGraphic = bg;
+            var captured = skin;
+            btn.onClick.AddListener(() => Sfx.Play(Sfx.Id.Click));
+            btn.onClick.AddListener(() => OnSkinClicked(captured));
+
+            var imgGo = new GameObject("Ball", typeof(RectTransform));
+            imgGo.transform.SetParent(card.transform, false);
+            var img = imgGo.AddComponent<Image>();
+            img.sprite = BallSkins.SpriteOf(skin);
+            img.preserveAspect = true; img.raycastTarget = false;
+            if (!unlocked) img.color = new Color(0.55f, 0.55f, 0.6f, 1f); // kilitli: soluk
+            var irt = img.rectTransform;
+            irt.anchorMin = irt.anchorMax = new Vector2(0.5f, 1f); irt.pivot = new Vector2(0.5f, 1f);
+            irt.anchoredPosition = new Vector2(0, -18); irt.sizeDelta = new Vector2(140, 140);
+
+            var nm = MakeText(card.transform, skin.name, 30, TextAnchor.MiddleCenter, Color.white,
+                new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 104), new Vector2(230, 40));
+            nm.font = fontBold;
+
+            // Topun özelliği: satın alma kararının asıl sebebi - her kartta net görünsün.
+            MakeText(card.transform, skin.perkDesc, 20, TextAnchor.MiddleCenter, new Color(0.65f, 0.9f, 1f),
+                new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 70), new Vector2(236, 36));
+
+            string stateTxt = selected ? "SEÇİLİ ✓" : unlocked ? "SEÇ" : skin.cost + " coin";
+            var st = MakeText(card.transform, stateTxt, 26, TextAnchor.MiddleCenter,
+                selected ? new Color(0.6f, 1f, 0.75f) : unlocked ? new Color(1f, 1f, 1f, 0.85f) : new Color(1f, 0.82f, 0.3f),
+                new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 32), new Vector2(230, 36));
+            st.font = fontBold;
+        }
+    }
+
+    void OnSkinClicked(BallSkins.Skin skin)
+    {
+        if (BallSkins.IsUnlocked(skin))
+        {
+            BallSkins.Select(skin);
+        }
+        else if (BallSkins.TryBuy(skin))
+        {
+            ShowMissionToast(skin.name + " topu alındı!"); // mevcut kutlama bildirimini kullan
+        }
+        else
+        {
+            ShowMissionToast("Yetersiz coin — " + skin.cost + " gerekli");
+        }
+        RefreshBallShop();
+        Refresh(); // seçim ekranındaki coin yazısı güncellensin
+    }
+
     // ---------------- Zorunlu isim kapısı ----------------
     void BuildNamePrompt(Transform parent)
     {
@@ -991,6 +1237,8 @@ public class UIController : MonoBehaviour
         gameOverPanel.SetActive(s == GameManager.State.GameOver);
         hud.SetActive(s == GameManager.State.Playing);
         if (leaderboardPanel != null && s == GameManager.State.Playing) leaderboardPanel.SetActive(false);
+        if (missionsPanel != null && s == GameManager.State.Playing) missionsPanel.SetActive(false);
+        if (ballShopPanel != null && s == GameManager.State.Playing) ballShopPanel.SetActive(false);
         // Durum ne olursa olsun duraklatma kalıntısı kalmasın (ör. oyun biterken).
         if (s != GameManager.State.Playing && pausePanel != null && pausePanel.activeSelf)
         {
@@ -1150,14 +1398,17 @@ public class UIController : MonoBehaviour
         if (nameText != null)
         {
             var trait = PlayerData.CurrentTrait;
-            nameText.text = PlayerData.NameOf(PlayerData.SelectedFigure);
-            nameText.color = PlayerData.TraitColor(trait);
+            bool royal = PlayerData.IsRoyal(PlayerData.SelectedFigure);
+            nameText.text = PlayerData.NameOf(PlayerData.SelectedFigure) + (royal ? "  •  TÜM YETENEKLER" : "");
+            nameText.color = royal ? new Color(1f, 0.82f, 0.25f) : PlayerData.TraitColor(trait);
             if (hudTraitIcon != null && hudTraitFig != PlayerData.SelectedFigure)
             {
                 hudTraitFig = PlayerData.SelectedFigure;
-                var ts = TraitSprite(trait);
+                // Asil: altın yıldız (tüm yetenekler); diğerleri: kendi özellik rozeti.
+                var ts = royal ? null : TraitSprite(trait);
                 hudTraitIcon.sprite = ts != null ? ts : MakeStarSprite();
-                hudTraitIcon.color = ts != null ? Color.white : PlayerData.TraitColor(trait);
+                hudTraitIcon.color = ts != null ? Color.white
+                    : royal ? new Color(1f, 0.82f, 0.25f) : PlayerData.TraitColor(trait);
             }
         }
         // Süre modunda top ikonu gizlenir (yerine "SÜRE: N" yazar); klasikte görünür.

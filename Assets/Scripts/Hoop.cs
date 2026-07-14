@@ -46,16 +46,12 @@ public class Hoop : MonoBehaviour
         MakeRim("RimLeft", -GameConfig.RimGap * 0.5f * k, k);
         MakeRim("RimRight", GameConfig.RimGap * 0.5f * k, k);
 
-        // Tahta (katı çarpışma) - çemberin SAĞINDA/arkasında İNCE DİKEY duvar.
-        // Ortadan inen normal atışları engellemez; sağa kaçan sert atışlar buna çarpıp
-        // sola-aşağı sekerek gerçek "banka atış" hissi verir.
-        var board = new GameObject("Board");
-        board.transform.SetParent(transform, false);
-        float boardCenterY = (GameConfig.BoardTop + GameConfig.BoardBottom) * 0.5f;
-        board.transform.localPosition = new Vector3(GameConfig.BoardX * k, boardCenterY * k, 0f);
-        var boardCol = board.AddComponent<BoxCollider2D>();
-        boardCol.size = new Vector2(GameConfig.BoardThickness, GameConfig.BoardTop - GameConfig.BoardBottom) * k;
-        boardCol.sharedMaterial = new PhysicsMaterial2D("board") { bounciness = GameConfig.BoardBounce, friction = 0.3f };
+        // TAHTA/TAMPON COLLIDER'I YOK - BİLİNÇLİ OLARAK.
+        // Pota görseli önden bakışlı bir dekor; üzerinde görünmez herhangi bir katı yüzey
+        // (duvar, tampon, kutu...) oyuncuya "görünmez engel" olarak yansıyor ve top orada
+        // takılı/asılı görünüyordu (3 kez şikayet edildi). Artık çarpılabilir TEK şey
+        // görünen iki çember ucu: gördüğün neyse fizik de o. Uzun atışlar potanın
+        // arkasından/önünden serbestçe geçip düşer - doğal ıska.
 
         // Skor değişince zorluğu güncelle.
         if (GameManager.Instance != null)
@@ -67,9 +63,11 @@ public class Hoop : MonoBehaviour
         var go = new GameObject(n);
         go.transform.SetParent(transform, false);
         go.transform.localPosition = new Vector3(dx, GameConfig.RimYOffset * k, 0f);
-        var c = go.AddComponent<BoxCollider2D>();
-        c.size = new Vector2(GameConfig.RimThickness, GameConfig.RimThickness) * k;
-        c.sharedMaterial = new PhysicsMaterial2D("rim") { bounciness = 0.28f, friction = 0.2f };
+        // DAİRE collider (kutu değil): kutunun düz üst rafında top dengede kalabiliyordu.
+        // Dairede duramaz; ayrıca kenardan sıyıran toplar gerçek çember gibi teğet seker.
+        var c = go.AddComponent<CircleCollider2D>();
+        c.radius = GameConfig.RimThickness * 0.5f * k;
+        c.sharedMaterial = new PhysicsMaterial2D("rim") { bounciness = 0.28f, friction = 0.1f };
     }
 
     void Update()
@@ -139,5 +137,11 @@ public class Hoop : MonoBehaviour
         moving = score >= 6;
         moveAmp = Mathf.Min(1.0f + score * 0.05f, 2.4f);
         moveSpeed = Mathf.Min(0.9f + score * 0.03f, 2.0f);
+        // BUZ topu özelliği: pota %12 daha yavaş ve daha dar salınır.
+        if (BallSkins.CurrentPerk == BallSkins.Perk.SlowHoop)
+        {
+            moveAmp *= 0.88f;
+            moveSpeed *= 0.88f;
+        }
     }
 }

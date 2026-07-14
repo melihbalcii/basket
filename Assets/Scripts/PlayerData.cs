@@ -48,8 +48,13 @@ public static class PlayerData
     public static Trait TraitOf(int i)
         => (i >= 0 && i < Traits.Length) ? Traits[i] : Trait.Sniper;
 
-    /// <summary>Seçili karakterin özelliği (oyun içi etkiler buradan okur).</summary>
+    /// <summary>Seçili karakterin özelliği (rozet/renk gösterimi için).</summary>
     public static Trait CurrentTrait => TraitOf(SelectedFigure);
+
+    /// <summary>Oyun içi etkiler BUNU kullanmalı: seçili karakterde bu yetenek var mı?
+    /// ASİLLER (Kral/Kraliçe) TÜM yeteneklere sahiptir - en pahalı karakterlerin gücü.</summary>
+    public static bool HasTrait(Trait t)
+        => IsRoyal(SelectedFigure) || CurrentTrait == t;
 
     public static string TraitName(Trait t) => t switch
     {

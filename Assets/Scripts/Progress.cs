@@ -44,6 +44,17 @@ public static class Progress
         PlayerPrefs.Save();
     }
 
+    /// <summary>Yeterli bakiye varsa coin harcar (top görünümü vb.). Başarılıysa true.</summary>
+    public static bool TrySpend(int amount)
+    {
+        EnsureLoaded();
+        if (amount <= 0 || Coins < amount) return false;
+        Coins -= amount;
+        PlayerPrefs.SetInt("vl_coins", Coins);
+        PlayerPrefs.Save();
+        return true;
+    }
+
     /// <summary>Yeterli coin varsa karakteri açar ve coin düşer. Başarılıysa true.</summary>
     public static bool TryUnlock(int figIndex)
     {

@@ -18,7 +18,8 @@ public class Ball : MonoBehaviour
     bool netSlow; // sayı sonrası "file içinde süzülme" modu aktif mi
     Vector3 holdPos;
     Vector3 baseScale;
-    float squashT; // çarpışma sonrası "squash & stretch" esneme süresi
+    float squashT;   // çarpışma sonrası "squash & stretch" esneme süresi
+    float squashAmp; // esneme şiddeti (çarpma hızına göre; gerçek top gibi en fazla ~%6)
     float bobT;
     float liveT; // atış başladığından beri geçen süre (takılma güvenlik ağı için)
 
@@ -85,11 +86,12 @@ public class Ball : MonoBehaviour
 
     void Update()
     {
-        // Squash & stretch: çarpınca yassılaşıp toparlanır (canlılık hissi). Her durumda işler.
+        // Squash & stretch: çarpınca hafifçe yassılaşıp hızla toparlanır. Gerçek basketbol
+        // topu gibi: şiddet çarpma hızıyla orantılı (yavaş temas ~hiç, en sert çarpma %6).
         if (squashT > 0f)
         {
             squashT -= Time.deltaTime;
-            float k = Mathf.Sin(Mathf.Clamp01(squashT / 0.16f) * Mathf.PI) * 0.22f;
+            float k = Mathf.Sin(Mathf.Clamp01(squashT / 0.09f) * Mathf.PI) * squashAmp;
             transform.localScale = new Vector3(baseScale.x * (1f + k), baseScale.y * (1f - k), 1f);
             if (squashT <= 0f) transform.localScale = baseScale;
         }
@@ -177,7 +179,10 @@ public class Ball : MonoBehaviour
         if (n == "RimLeft" || n == "RimRight" || n == "Board" || n == "Ground")
             TouchedObstacle = true;
 
-        squashT = 0.16f; // çarpma anında esneme animasyonunu başlat
+        // Esneme şiddeti çarpma hızından: hafif temasta belli belirsiz, sertte en çok %6.
+        float impact = Mathf.Clamp01(col.relativeVelocity.magnitude / GameConfig.MaxShotSpeed);
+        squashAmp = Mathf.Lerp(0.01f, 0.06f, impact);
+        squashT = 0.09f; // gerçek top gibi çabuk toparlanır
         Sfx.Play(Sfx.Id.Bounce);
 
         // Yere değen top artık sayı olamaz: seke seke bekletmeden atışı hemen sonuçlandır.

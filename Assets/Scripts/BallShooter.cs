@@ -125,6 +125,12 @@ public class BallShooter : MonoBehaviour
     public void PrepareForPlay()
     {
         CancelInvoke();
+        // Seçili top görünümünü uygula (mağazadan değiştirilmiş olabilir).
+        if (ballSr != null)
+        {
+            var skin = BallSkins.CurrentSprite();
+            if (skin != null && ballSr.sprite != skin) ballSr.sprite = skin;
+        }
         if (ball != null) ball.Hold(ballHome);
         // İz temizlenmeli: Hold topu ışınlar, yoksa ekranda uzun bir çizgi kalır.
         if (trail != null) { trail.Clear(); trail.emitting = false; }
@@ -147,8 +153,11 @@ public class BallShooter : MonoBehaviour
             else
             {
                 // Şanslı özelliği: altın top daha sık gelir (3 atışta bir; normalde 4).
-                int every = PlayerData.CurrentTrait == PlayerData.Trait.Lucky
+                int every = PlayerData.HasTrait(PlayerData.Trait.Lucky)
                     ? GameConfig.LuckyGoldenEvery : GameConfig.GoldenEvery;
+                // ALTIN topu özelliği: altın top 3 atışta bir (Şanslı ile aynı; birlikte de 3).
+                if (BallSkins.CurrentPerk == BallSkins.Perk.GoldenOften)
+                    every = Mathf.Min(every, GameConfig.LuckyGoldenEvery);
                 if ((gm.ShotsTaken + 1) % every == 0)
                 {
                     mult = GameConfig.GoldenMult; glow = new Color(1f, 0.8f, 0.15f);
@@ -244,7 +253,10 @@ public class BallShooter : MonoBehaviour
     Vector2 PullToVelocity(Vector2 pull, out bool valid)
     {
         // Güçlü Kol özelliği: aynı sürüklemeyle daha hızlı atış (üst sınır da aynı oranda artar).
-        float traitMult = PlayerData.CurrentTrait == PlayerData.Trait.Power ? GameConfig.PowerTraitBoost : 1f;
+        // (Asiller tüm yeteneklere sahip - HasTrait bunu kapsar.)
+        float traitMult = PlayerData.HasTrait(PlayerData.Trait.Power) ? GameConfig.PowerTraitBoost : 1f;
+        // MOR topu özelliği: atış gücü +%5 (karakter özelliğiyle birleşebilir).
+        if (BallSkins.CurrentPerk == BallSkins.Perk.PowerBoost) traitMult *= 1.05f;
         float maxSpeed = GameConfig.MaxShotSpeed * traitMult;
 
         valid = pull.magnitude >= GameConfig.MinDrag;
@@ -348,8 +360,10 @@ public class BallShooter : MonoBehaviour
             // Noktalı yay: küçülen ve solan parlak toplar + uçta yön oku.
             // Keskin Nişancı özelliği: yay daha uzağı gösterir (noktalar seyrekleşir, menzil uzar).
             int n = aimDots.Length;
-            float dt = PlayerData.CurrentTrait == PlayerData.Trait.Sniper
+            float dt = PlayerData.HasTrait(PlayerData.Trait.Sniper)
                 ? 0.085f * GameConfig.SniperAimStretch : 0.085f;
+            // PEMBE topu özelliği: nişan yayı %15 daha uzağı gösterir (Nişancı ile birleşebilir).
+            if (BallSkins.CurrentPerk == BallSkins.Perk.AimStretch) dt *= 1.15f;
             float dotBase = 0.22f / aimDots[0].sprite.bounds.size.y;
             for (int i = 0; i < n; i++)
             {
