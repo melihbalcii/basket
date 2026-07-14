@@ -105,3 +105,12 @@ InitTestScene*.unity*
 
 # Auto-generated scenes by play mode tests
 /[Aa]ssets/[Ii]nit[Tt]est[Ss]cene*.unity*
+
+# Local Netlify folder
+.netlify
+
+# Node / Netlify (leaderboard fonksiyonu araçları)
+node_modules/
+.netlify/
+package-lock.json
+.DS_Store

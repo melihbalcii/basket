@@ -1,0 +1,7 @@
+# Vinyl League — WebGL statik oyun + skor tablosu fonksiyonu
+[build]
+  publish = "Builds/WebGL"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
