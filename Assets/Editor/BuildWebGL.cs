@@ -85,7 +85,19 @@ public static class BuildWebGL
                 + "    <meta name=\"apple-mobile-web-app-status-bar-style\" content=\"black-translucent\">\n"
                 + "    <meta name=\"apple-mobile-web-app-title\" content=\"Vinyl League\">\n"
                 + "    <link rel=\"apple-touch-icon\" href=\"icons/icon-180.png\">\n"
-                + "    <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('sw.js'));</script>\n";
+                + "    <script>\n"
+                + "    // SW kaydı + OTOMATİK GÜNCELLEME: build dosya adları sabit olduğundan, yeni\n"
+                + "    // sürüm SW'yi devraldığı an sayfa BİR KEZ yenilenir (oyuncu eski önbellekte kalmaz).\n"
+                + "    // İlk ziyarette (önceki denetleyici yokken) yenileme YAPILMAZ - çifte indirme olmasın.\n"
+                + "    if ('serviceWorker' in navigator) {\n"
+                + "      addEventListener('load', () => navigator.serviceWorker.register('sw.js'));\n"
+                + "      let vlHadSw = !!navigator.serviceWorker.controller, vlReloaded = false;\n"
+                + "      navigator.serviceWorker.addEventListener('controllerchange', () => {\n"
+                + "        if (vlHadSw && !vlReloaded) { vlReloaded = true; location.reload(); }\n"
+                + "        vlHadSw = true;\n"
+                + "      });\n"
+                + "    }\n"
+                + "    </script>\n";
             html = html.Replace("</head>", inject + "  </head>");
             File.WriteAllText(indexPath, html);
         }

@@ -291,7 +291,11 @@ public class UIController : MonoBehaviour
     // ---------------- Özellik rehberi ----------------
     void BuildTraitsPanel(Transform parent)
     {
-        traitsPanel = NewPanel(parent, "TraitsPanel", new Color(0.03f, 0.04f, 0.10f, 0.94f));
+        traitsPanel = NewPanel(parent, "TraitsPanel", new Color(0.03f, 0.04f, 0.10f, 0.99f));
+        // Dar (dikey) ekranda metinler kısaltılmış genişlikte - sağdan taşma tespit edildi.
+        bool portrait = Screen.height > Screen.width;
+        float tW = portrait ? 760f : 880f;   // açıklama/oyuncu listesi genişliği
+        float tX = portrait ? -370f : -350f; // metin başlangıcı
 
         MakeText(traitsPanel.transform, "OYUNCU ÖZELLİKLERİ", 64, TextAnchor.UpperCenter, Color.white,
             new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -90), new Vector2(1200, 90));
@@ -321,17 +325,18 @@ public class UIController : MonoBehaviour
             var irt = icon.rectTransform;
             irt.anchorMin = irt.anchorMax = new Vector2(0.5f, 0.5f);
             irt.pivot = new Vector2(0.5f, 0.5f);
-            irt.anchoredPosition = new Vector2(-430, y + 10);
-            irt.sizeDelta = new Vector2(96, 96);
+            irt.anchoredPosition = new Vector2(portrait ? -448f : -430f, y + 10);
+            irt.sizeDelta = new Vector2(portrait ? 72 : 96, portrait ? 72 : 96);
 
             // Ad (özellik renginde, kalın)
-            var nameT = MakeText(traitsPanel.transform, PlayerData.TraitName(t), 42, TextAnchor.MiddleLeft, PlayerData.TraitColor(t),
-                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 0.5f), new Vector2(-350, y + 42), new Vector2(800, 52));
+            var nameT = MakeText(traitsPanel.transform, PlayerData.TraitName(t), portrait ? 36 : 42, TextAnchor.MiddleLeft, PlayerData.TraitColor(t),
+                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 0.5f), new Vector2(tX, y + 42), new Vector2(tW, 52));
             nameT.font = fontBold;
 
-            // Açıklama
-            MakeText(traitsPanel.transform, descs[i], 30, TextAnchor.UpperLeft, new Color(1f, 1f, 1f, 0.88f),
-                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 0.5f), new Vector2(-350, y - 4), new Vector2(880, 60));
+            // Açıklama (dar ekranda 2 satıra SARILIR; kutudan taşmaz)
+            var descT = MakeText(traitsPanel.transform, descs[i], portrait ? 25 : 30, TextAnchor.UpperLeft, new Color(1f, 1f, 1f, 0.88f),
+                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 0.5f), new Vector2(tX, y - 4), new Vector2(tW, 60));
+            descT.horizontalOverflow = HorizontalWrapMode.Wrap;
 
             // Bu özellikteki oyuncular (isim listesi dinamik kurulur)
             var sb = new System.Text.StringBuilder("Oyuncular: ");
@@ -344,8 +349,9 @@ public class UIController : MonoBehaviour
                 sb.Append(PlayerData.NameOf(f));
                 first = false;
             }
-            MakeText(traitsPanel.transform, sb.ToString(), 26, TextAnchor.UpperLeft, new Color(1f, 0.85f, 0.4f, 0.9f),
-                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 0.5f), new Vector2(-350, y - 48), new Vector2(880, 40));
+            var plT = MakeText(traitsPanel.transform, sb.ToString(), portrait ? 21 : 26, TextAnchor.UpperLeft, new Color(1f, 0.85f, 0.4f, 0.9f),
+                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 0.5f), new Vector2(tX, y - 48), new Vector2(tW, 40));
+            plT.horizontalOverflow = HorizontalWrapMode.Wrap;
         }
 
         MakeButton(traitsPanel.transform, "KAPAT", new Color(0.9f, 0.45f, 0.15f),
@@ -402,9 +408,13 @@ public class UIController : MonoBehaviour
     {
         selectPanel = NewPanel(parent, "SelectPanel", new Color(0.05f, 0.06f, 0.12f, 0.92f));
 
+        // DİKEY DÜZEN (telefon): üstte iki buton kolonu (sol: bilgi, sağ: menü), LOGO ALTA
+        // iner - önceden butonlar logonun üstüne biniyordu (telefon görüntüsüyle tespit edildi).
+        bool portrait = Screen.height > Screen.width;
+
         // Başlık: logo görseli varsa onu kullan (Sprites/logo.png), yoksa yazıya düş.
         var logoSpr = Resources.Load<Sprite>("Sprites/logo");
-        float subtitleY = -180f;
+        float subtitleY = portrait ? -500f : -180f;
         if (logoSpr != null)
         {
             var lgo = new GameObject("Logo", typeof(RectTransform));
@@ -416,9 +426,9 @@ public class UIController : MonoBehaviour
             var lrt = li.rectTransform;
             lrt.anchorMin = lrt.anchorMax = new Vector2(0.5f, 1f);
             lrt.pivot = new Vector2(0.5f, 1f);
-            lrt.anchoredPosition = new Vector2(0, -20);
-            lrt.sizeDelta = new Vector2(580, 263); // logo oranına (626x284) yakın
-            subtitleY = -290f; // alt yazı logonun altına insin
+            lrt.anchoredPosition = new Vector2(0, portrait ? -290f : -20f);
+            lrt.sizeDelta = portrait ? new Vector2(460, 209) : new Vector2(580, 263); // logo oranı (626x284)
+            subtitleY = portrait ? -510f : -290f; // alt yazı logonun altına insin
         }
         else
         {
@@ -430,38 +440,47 @@ public class UIController : MonoBehaviour
 
         // Coin bakiyesi (sol üst): kilit açmada harcanır, oyuncuya "biriktirme" hedefi verir.
         coinText = MakeText(selectPanel.transform, "", 44, TextAnchor.UpperLeft, new Color(1f, 0.82f, 0.2f),
-            new Vector2(0, 1), new Vector2(0, 1), new Vector2(0, 1), new Vector2(40, -34), new Vector2(700, 56));
+            new Vector2(0, 1), new Vector2(0, 1), new Vector2(0, 1), new Vector2(40, portrait ? -24f : -34f), new Vector2(420, 56));
         coinText.font = fontBold;
 
         // Günlük seri rozeti (coin'in altında): her gün oynamaya teşvik eder.
         streakText = MakeText(selectPanel.transform, "", 30, TextAnchor.UpperLeft, new Color(1f, 0.6f, 0.2f),
-            new Vector2(0, 1), new Vector2(0, 1), new Vector2(0, 1), new Vector2(40, -96), new Vector2(700, 44));
+            new Vector2(0, 1), new Vector2(0, 1), new Vector2(0, 1), new Vector2(40, portrait ? -84f : -96f), new Vector2(420, 44));
 
         // Oyun modu seçici (sağ üst): KLASİK (10 top) <-> ZAMANA KARŞI (60sn).
         var modeBtn = MakeButton(selectPanel.transform, "", new Color(0.25f, 0.30f, 0.45f),
-            new Vector2(1, 1), new Vector2(1, 1), new Vector2(1, 1), new Vector2(-40, -36), new Vector2(470, 76),
+            new Vector2(1, 1), new Vector2(1, 1), new Vector2(1, 1),
+            portrait ? new Vector2(-40, -24) : new Vector2(-40, -36),
+            portrait ? new Vector2(400, 64) : new Vector2(470, 76),
             ToggleMode);
         modeBtnLabel = modeBtn.GetComponentInChildren<Text>();
-        modeBtnLabel.fontSize = 28;
+        modeBtnLabel.fontSize = portrait ? 24 : 28;
         RefreshModeLabel();
 
         // Skor tablosu düğmesi (sağ üst, mod düğmesinin altında): arkadaş rekabeti.
         MakeButton(selectPanel.transform, "SIRALAMA", new Color(0.18f, 0.42f, 0.30f),
-            new Vector2(1, 1), new Vector2(1, 1), new Vector2(1, 1), new Vector2(-40, -124), new Vector2(470, 72),
+            new Vector2(1, 1), new Vector2(1, 1), new Vector2(1, 1),
+            portrait ? new Vector2(-40, -96) : new Vector2(-40, -124),
+            portrait ? new Vector2(400, 64) : new Vector2(470, 72),
             () => OpenLeaderboard(lbMode));
 
         // Top mağazası düğmesi (sıralamanın altında): coin harcama hedefi.
         MakeButton(selectPanel.transform, "TOPLAR", new Color(0.45f, 0.28f, 0.55f),
-            new Vector2(1, 1), new Vector2(1, 1), new Vector2(1, 1), new Vector2(-40, -212), new Vector2(470, 72),
+            new Vector2(1, 1), new Vector2(1, 1), new Vector2(1, 1),
+            portrait ? new Vector2(-40, -168) : new Vector2(-40, -212),
+            portrait ? new Vector2(400, 64) : new Vector2(470, 72),
             OpenBallShop);
 
         // Oyuncu adı (sol üst, serinin altında): skor tablosunda bu isimle görünürsün.
         nameField = MakeInputField(selectPanel.transform, "ADINI GİR (sıralama için)",
-            new Vector2(0, 1), new Vector2(40, -150), new Vector2(430, 64));
+            new Vector2(0, 1), portrait ? new Vector2(40, -136) : new Vector2(40, -150),
+            portrait ? new Vector2(340, 60) : new Vector2(430, 64));
 
         // Günlük görevler düğmesi (sol üst, isim alanının altında): her gün 3 görev = coin.
         MakeButton(selectPanel.transform, "GÖREVLER", new Color(0.55f, 0.35f, 0.12f),
-            new Vector2(0, 1), new Vector2(0, 1), new Vector2(0, 1), new Vector2(40, -232), new Vector2(300, 70),
+            new Vector2(0, 1), new Vector2(0, 1), new Vector2(0, 1),
+            portrait ? new Vector2(40, -206) : new Vector2(40, -232),
+            portrait ? new Vector2(300, 64) : new Vector2(300, 70),
             OpenMissions);
 
         // Özellik rehberi düğmesi (sağ alt): rozetlerin ne anlama geldiğini açıklar.
@@ -477,7 +496,7 @@ public class UIController : MonoBehaviour
         var grt = grid.GetComponent<RectTransform>();
         grt.anchorMin = grt.anchorMax = new Vector2(0.5f, 0.5f);
         grt.pivot = new Vector2(0.5f, 0.5f);
-        grt.anchoredPosition = new Vector2(0, -100);
+        grt.anchoredPosition = new Vector2(0, portrait ? -150f : -100f); // dikeyde başlık bloğunun altına
         grt.sizeDelta = new Vector2(1280, 564);
         gridTransform = grid.transform;
         PopulateGrid();
@@ -648,7 +667,7 @@ public class UIController : MonoBehaviour
     // ---------------- Kilit açma onayı ----------------
     void BuildUnlockPanel(Transform parent)
     {
-        unlockPanel = NewPanel(parent, "UnlockPanel", new Color(0.03f, 0.04f, 0.10f, 0.93f));
+        unlockPanel = NewPanel(parent, "UnlockPanel", new Color(0.03f, 0.04f, 0.10f, 0.99f));
 
         MakeText(unlockPanel.transform, "OYUNCUYU AÇ", 60, TextAnchor.UpperCenter, Color.white,
             new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -80), new Vector2(1200, 84));
@@ -664,9 +683,10 @@ public class UIController : MonoBehaviour
         frt.anchoredPosition = new Vector2(0, 150);
         frt.sizeDelta = new Vector2(300, 400);
 
-        unlockNameText = MakeText(unlockPanel.transform, "", 44, TextAnchor.MiddleCenter, Color.white,
-            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, -110), new Vector2(1100, 56));
+        unlockNameText = MakeText(unlockPanel.transform, "", 36, TextAnchor.MiddleCenter, Color.white,
+            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, -110), new Vector2(920, 100));
         unlockNameText.font = fontBold;
+        unlockNameText.horizontalOverflow = HorizontalWrapMode.Wrap; // "TÜM YETENEKLER (...)" dar ekranda sarılır
         unlockCostText = MakeText(unlockPanel.transform, "", 40, TextAnchor.MiddleCenter, new Color(1f, 0.82f, 0.2f),
             new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, -172), new Vector2(1100, 52));
         unlockCostText.font = fontBold;
@@ -812,7 +832,7 @@ public class UIController : MonoBehaviour
 
     void BuildLeaderboardPanel(Transform parent)
     {
-        leaderboardPanel = NewPanel(parent, "LeaderboardPanel", new Color(0.03f, 0.05f, 0.11f, 0.96f));
+        leaderboardPanel = NewPanel(parent, "LeaderboardPanel", new Color(0.03f, 0.05f, 0.11f, 0.99f));
 
         lbTitleText = MakeText(leaderboardPanel.transform, "SIRALAMA", 62, TextAnchor.UpperCenter, Color.white,
             new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -60), new Vector2(1200, 84));
@@ -961,7 +981,7 @@ public class UIController : MonoBehaviour
     // ---------------- Günlük görevler ----------------
     void BuildMissionsPanel(Transform parent)
     {
-        missionsPanel = NewPanel(parent, "MissionsPanel", new Color(0.03f, 0.05f, 0.11f, 0.96f));
+        missionsPanel = NewPanel(parent, "MissionsPanel", new Color(0.03f, 0.05f, 0.11f, 0.99f));
 
         var t = MakeText(missionsPanel.transform, "GÜNLÜK GÖREVLER", 62, TextAnchor.UpperCenter, Color.white,
             new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -70), new Vector2(1200, 84));
@@ -1060,7 +1080,7 @@ public class UIController : MonoBehaviour
     // ---------------- Top mağazası ----------------
     void BuildBallShopPanel(Transform parent)
     {
-        ballShopPanel = NewPanel(parent, "BallShopPanel", new Color(0.03f, 0.05f, 0.11f, 0.96f));
+        ballShopPanel = NewPanel(parent, "BallShopPanel", new Color(0.03f, 0.05f, 0.11f, 0.99f));
 
         var t = MakeText(ballShopPanel.transform, "TOP KOLEKSİYONU", 62, TextAnchor.UpperCenter, Color.white,
             new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -70), new Vector2(1200, 84));
