@@ -6,28 +6,30 @@ using UnityEngine;
 /// </summary>
 public static class GameConfig
 {
-    // --- Kamera ---
-    public const float CameraSize = 5f;                       // ortografik kamera boyutu
-    // Dar ekranlarda (telefon dik tutulunca) oyuncu ve pota ekran dışında kalmasın:
-    // kamera, yarı-genişlik en az bu kadar olacak şekilde otomatik uzaklaşır.
-    public const float MinHalfWidth = 7.0f;
+    // --- Kamera (DİKEY-ÖNCELİKLİ: oyun telefon dik tutuşuna göre kurgulandı) ---
+    // Dünya dikey dizilir: oyuncu SOL-ALT, pota SAĞ-ÜST. Yatay iz düşümü dar tutulur
+    // ki dar ekranda kamera uzaklaşmak zorunda kalmasın ve her şey BÜYÜK görünsün.
+    public const float CameraSize = 7.8f;                     // ortografik yarı-yükseklik (dikey sahne)
+    public const float CameraY = -0.9f;                       // kamera merkezi (oyuncu altta olduğundan aşağı kaydırılır)
+    // Dar ekranlarda pota kenarda kalmasın: yarı-genişlik en az bu kadar olur.
+    public const float MinHalfWidth = 4.3f;
     public static readonly Color SkyColor = new Color(0.10f, 0.12f, 0.20f);
 
     // --- Oyuncu (figür) ---
-    public static readonly Vector2 PlayerBase = new Vector2(-5.6f, -4.0f); // figürün ayağının yere bastığı nokta
-    public const float PlayerHeight = 4.8f;                   // figür dünya birimi cinsinden boy
+    public static readonly Vector2 PlayerBase = new Vector2(-2.1f, -6.6f); // figürün ayağının yere bastığı nokta (sol-alt)
+    public const float PlayerHeight = 4.2f;                   // figür dünya birimi cinsinden boy
 
     // --- Top ---
-    public static readonly Vector2 BallOffsetFromBase = new Vector2(1.5f, 1.95f); // topun figüre göre konumu (sağ el)
+    public static readonly Vector2 BallOffsetFromBase = new Vector2(1.3f, 1.7f); // topun figüre göre konumu (sağ el)
     public const float BallDiameter = 0.85f;
-    public const float BallGravity = 1.45f;                   // yerçekimi çarpanı (büyük = daha hızlı düşer) - hafif floaty arc için düşürüldü
+    public const float BallGravity = 1.25f;                   // dikey kurguda daha süzülen yay: atış penceresi genişler, kontrol artar
     public const float BallBounce = 0.3f;                     // 0.4 -> 0.3: çemberde pinball gibi sekmesin, düşüp girsin
 
     // --- Pota (tam tahta+çember+file görseli; sprite merkezi = tahtanın ortası, çember biraz aşağıda) ---
     // NOT: RimGap, RimYOffset, Board* değerleri hoop.png (496x465) üzerinde piksel renk analiziyle
     // (turuncu tahta vs. mavi çember geçiş noktaları) TAM ÖLÇÜLEREK hesaplandı - tahmini değil.
     // Görsel değişirse yeniden ölçülmeli.
-    public static readonly Vector2 HoopPos = new Vector2(4.2f, 2.6f); // pota (tahta) MERKEZİ
+    public static readonly Vector2 HoopPos = new Vector2(1.55f, 3.1f); // pota (tahta) MERKEZİ (sağ-üst; dikey kurgu)
     public const float HoopHeight = 3.4f;                     // pota dünya YÜKSEKLİĞİ (büyütüldü: 2.8 -> 3.4)
     public const float RimGap = 1.70f;                        // çember açıklığı (top buradan geçer) - ölçülen orana göre büyütüldü
     public const float RimThickness = 0.22f;
@@ -87,7 +89,7 @@ public static class GameConfig
     // yüksek olmalı ki "tatlı nokta" ~%69 güçte, rahat olsun. MaxDrag ise top elde alçakta
     // durduğu için ekran içinde ulaşılabilir kalmalı (4.5 ekran dışına taşıyordu -> 3.0).
     public const float ShotPower = 1.0f;                      // genel güç çarpanı (ince ayar)
-    public const float MaxShotSpeed = 20f;                    // en yüksek atış hızı (15 -> 20: potaya rahat ulaşsın)
+    public const float MaxShotSpeed = 18.5f;                  // dikey kurguya göre: min gereken ~14 -> tatlı nokta ~%75
     // Sürükleme artık parmağın İLK DOKUNDUĞU noktadan ölçülür (göreli); ekran sınırı derdi
     // olmadığından mesafe uzun tutulur = aynı güç için daha çok parmak yolu = daha ince kontrol.
     public const float MaxDrag = 3.6f;                        // tam güç için gereken sürükleme mesafesi
@@ -109,8 +111,8 @@ public static class GameConfig
     public static readonly int[] StarThresholdsTimed = { 30, 55, 85 }; // zaman modu yıldız eşikleri (yeni skora göre dengelendi)
 
     // --- Sınırlar (top buraya ulaşınca atış sonuçlanır) ---
-    public const float KillBottom = -7f;
-    public const float KillSide = 11f;
+    public const float KillBottom = -10.5f;                   // dikey kurguda zemin aşağıda (-6.6)
+    public const float KillSide = 7f;                         // dünya darlaştı; top kenardan çıkınca çabuk sonuçlansın
     public const float ShotTimeout = 5f;                      // top bu süreden uzun sonuçlanmazsa (bir yere takıldıysa) atış otomatik biter
 }
 

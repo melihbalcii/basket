@@ -73,7 +73,8 @@ public class GameBootstrap : MonoBehaviour
         ApplyCameraSize(); // ekran oranına göre boyut (dar ekranda otomatik uzaklaşır)
         cam.backgroundColor = GameConfig.SkyColor;
         cam.clearFlags = CameraClearFlags.SolidColor;
-        cam.transform.position = new Vector3(0f, 0f, -10f);
+        // Dikey kurgu: oyuncu altta olduğundan kamera merkezi aşağı kaydırılır.
+        cam.transform.position = new Vector3(0f, GameConfig.CameraY, -10f);
         camShake = cam.GetComponent<CameraShake>();
         if (camShake == null) camShake = cam.gameObject.AddComponent<CameraShake>();
 
@@ -341,13 +342,24 @@ public class GameBootstrap : MonoBehaviour
 
     void FitBackground(SpriteRenderer sr)
     {
-        sr.transform.position = new Vector3(0f, 0f, 5f);
         if (sr.sprite == null) return;
-        float worldH = cam.orthographicSize * 2f; // adaptif kamera boyutuna göre kapla
-        float worldW = worldH * cam.aspect;
+        // Görselin ZEMİN ÇİZGİSİ (piksel ölçümü: alttan %29) dünyadaki zemine oturmalı;
+        // yoksa figür zeminin üstünde/altında havada duruyormuş gibi görünür. Ölçek,
+        // zemin sabitken görüntünün hem üstte hem altta ekranı kaplamasını garanti eder.
+        const float FloorFrac = 0.29f;
+        float floorWorldY = GameConfig.PlayerBase.y + 0.1f;
+        float camY = cam.transform.position.y;
+        float ortho = cam.orthographicSize;
+        float worldW = ortho * 2f * cam.aspect;
         var size = sr.sprite.bounds.size;
-        float s = Mathf.Max(worldW / size.x, worldH / size.y) * 1.02f;
+        float needTop = (camY + ortho) - floorWorldY;   // zeminden yukarı kaplanacak mesafe
+        float needBot = floorWorldY - (camY - ortho);   // zeminden aşağı kaplanacak mesafe
+        float s = Mathf.Max(worldW / size.x,
+                            needTop / ((1f - FloorFrac) * size.y),
+                            Mathf.Max(0.01f, needBot) / (FloorFrac * size.y)) * 1.02f;
         sr.transform.localScale = new Vector3(s, s, 1f);
+        float centerY = floorWorldY + (0.5f - FloorFrac) * size.y * s;
+        sr.transform.position = new Vector3(0f, centerY, 5f);
     }
 
     // ---- Figür oluşturma ----

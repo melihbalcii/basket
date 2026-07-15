@@ -500,7 +500,9 @@ public class UIController : MonoBehaviour
         // (GridLayoutGroup eksik son sırayı sola yasladığı için yerleşim elle hesaplanır.)
         const float cellW = 200f, cellH = 274f, gap = 16f;
         int total = PlayerData.FigureCount;
-        int topCount = (total + 1) / 2; // üst sırada bir fazla (10 -> 5+5)
+        // DİKEY-UYUMLU: dar ekranda (telefon dik) 3 sütuna, genişte 5 sütuna akar.
+        int cols = Screen.height > Screen.width ? 3 : 5;
+        int rowTotal = (total + cols - 1) / cols;
 
         // Gösterim sırası: ucuzdan pahalıya; asiller (Kral/Kraliçe) HER ZAMAN en sonda.
         var order = new System.Collections.Generic.List<int>();
@@ -517,11 +519,11 @@ public class UIController : MonoBehaviour
         for (int pos = 0; pos < total; pos++)
         {
             int idx = order[pos];
-            int row = pos < topCount ? 0 : 1;
-            int col = row == 0 ? pos : pos - topCount;
-            int rowCount = row == 0 ? topCount : total - topCount;
+            int row = pos / cols;
+            int col = pos % cols;
+            int rowCount = Mathf.Min(cols, total - row * cols);
             float x = (col - (rowCount - 1) * 0.5f) * (cellW + gap);
-            float y = row == 0 ? (cellH + gap) * 0.5f : -(cellH + gap) * 0.5f;
+            float y = ((rowTotal - 1) * 0.5f - row) * (cellH + gap);
 
             int captured = idx;
             var sprite = Resources.Load<Sprite>($"Figures/fig_{(idx + 1):00}");
@@ -972,7 +974,7 @@ public class UIController : MonoBehaviour
         list.transform.SetParent(missionsPanel.transform, false);
         var lrt = (RectTransform)list.transform;
         lrt.anchorMin = lrt.anchorMax = new Vector2(0.5f, 1); lrt.pivot = new Vector2(0.5f, 1);
-        lrt.anchoredPosition = new Vector2(0, -210); lrt.sizeDelta = new Vector2(1060, 420);
+        lrt.anchoredPosition = new Vector2(0, -210); lrt.sizeDelta = new Vector2(940, 420);
         missionsList = list.transform;
 
         missionsBonusText = MakeText(missionsPanel.transform, "", 32, TextAnchor.MiddleCenter, new Color(1f, 0.82f, 0.3f),
@@ -1010,11 +1012,11 @@ public class UIController : MonoBehaviour
             bg.color = dn ? new Color(0.16f, 0.42f, 0.28f, 0.95f) : new Color(0.12f, 0.15f, 0.24f, 0.9f);
             var rrt = bg.rectTransform;
             rrt.anchorMin = rrt.anchorMax = new Vector2(0.5f, 1); rrt.pivot = new Vector2(0.5f, 1);
-            rrt.sizeDelta = new Vector2(1060, rowH);
+            rrt.sizeDelta = new Vector2(940, rowH); // dar (dikey) ekrana da sığar
             rrt.anchoredPosition = new Vector2(0, -i * (rowH + gap));
 
-            var desc = MakeText(row.transform, def.Text, 32, TextAnchor.MiddleLeft, Color.white,
-                new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(34, 16), new Vector2(760, 44));
+            var desc = MakeText(row.transform, def.Text, 30, TextAnchor.MiddleLeft, Color.white,
+                new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(34, 16), new Vector2(640, 44));
             desc.font = fontBold;
             // İlerleme çubuğu yerine net sayı: "12/20" (bitti ise ✓ TAMAMLANDI).
             MakeText(row.transform, dn ? "TAMAMLANDI" : (Missions.ProgressOf(i) + " / " + def.target), 26,
@@ -1095,7 +1097,9 @@ public class UIController : MonoBehaviour
         ballShopCoinText.text = "Bakiye: " + Progress.Coins + " coin";
 
         const float cw = 250f, ch = 300f, gap = 16f;
-        int cols = 4;
+        // DİKEY-UYUMLU: dar ekranda 3 sütun (3 satır), genişte 4 sütun (2 satır).
+        int cols = Screen.height > Screen.width ? 3 : 4;
+        int rowTotal = (BallSkins.All.Length + cols - 1) / cols;
         for (int i = 0; i < BallSkins.All.Length; i++)
         {
             var skin = BallSkins.All[i];
@@ -1105,7 +1109,7 @@ public class UIController : MonoBehaviour
             int r = i / cols, c = i % cols;
             int rowCount = Mathf.Min(cols, BallSkins.All.Length - r * cols);
             float x = (c - (rowCount - 1) * 0.5f) * (cw + gap);
-            float y = 150f - r * (ch + gap);
+            float y = ((rowTotal - 1) * 0.5f - r) * (ch + gap);
 
             var card = new GameObject("Skin_" + skin.id, typeof(RectTransform));
             card.transform.SetParent(ballShopGrid, false);

@@ -88,7 +88,7 @@ public class Hoop : MonoBehaviour
     {
         if (rb == null) return;
         float targetX = moving
-            ? baseX - 0.2f + Mathf.Sin(Time.time * moveSpeed) * moveAmp
+            ? baseX + Mathf.Sin(Time.time * moveSpeed) * moveAmp
             // Hareket kapaliyken merkeze geri süzül - yeni oyun kayık potayla başlamasın.
             : Mathf.MoveTowards(rb.position.x, baseX, 8f * Time.fixedDeltaTime);
         if (Mathf.Approximately(targetX, rb.position.x)) return;
@@ -135,7 +135,9 @@ public class Hoop : MonoBehaviour
     public void SetDifficulty(int score)
     {
         moving = score >= 6;
-        moveAmp = Mathf.Min(1.0f + score * 0.05f, 2.4f);
+        // Dikey kurguda ekran dar: salınım küçük tutulur ki pota kenardan taşmasın
+        // (MinHalfWidth 4.3; pota merkez 1.55 + amp 0.9 + sprite yarısı 1.82 = 4.27).
+        moveAmp = Mathf.Min(0.5f + score * 0.03f, 0.9f);
         moveSpeed = Mathf.Min(0.9f + score * 0.03f, 2.0f);
         // BUZ topu özelliği: pota %12 daha yavaş ve daha dar salınır.
         if (BallSkins.CurrentPerk == BallSkins.Perk.SlowHoop)
